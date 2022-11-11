@@ -11,6 +11,7 @@ app.get('/api', (req, res) => {
     // res.send('Hello API!!!')
     axios.get('http://109.158.65.154:8080/test').then((response) => {
         console.log(response.data)
+        res.header("Access-Control-Allow-Origin", "*");
         res.send(response.data)
     })
 })
