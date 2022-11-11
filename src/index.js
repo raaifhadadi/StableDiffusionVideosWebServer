@@ -10,9 +10,7 @@ app.get('/', (req, res) => {
 
 app.get('/generate', async (req, res) => {
 
-    // get query from url
     const query = req.query
-    console.log(query)
 
     const axiosResponse = await axios({
         url: 'http://109.158.65.154:8080/api',
