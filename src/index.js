@@ -12,6 +12,7 @@ app.get('/api', (req, res) => {
     axios.get('http://109.158.65.154:8080/test').then((response) => {
         console.log(response.data)
         res.header("Access-Control-Allow-Origin", "*");
+        res.setHeader('content-type', 'video/mp4');
         res.send(response.data)
     })
 })
