@@ -15,7 +15,6 @@ app.get('/api', async (req, res) => {
     //     // console.log(response);
     //     // console.log(response.data)
     //     res.status(200)
-    //     res.header("Access-Control-Allow-Origin", "*");
     //     // res.send(response.data)
     //     res.json(response)
     // })
@@ -26,6 +25,7 @@ app.get('/api', async (req, res) => {
     })
 
     axiosResponse.data.pipe(res)
+    res.header("Access-Control-Allow-Origin", "*");
     res.contentType('video/mp4');
 
     // const downloader = download('http://109.158.65.154:8080/test', 'video.mp4', "GET")
