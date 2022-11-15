@@ -38,6 +38,14 @@ app.get('/api', async (req, res) => {
 
 })
 
+app.get('/api3', async (req, res) => {
+
+    res.header("Access-Control-Allow-Origin", "*");
+    res.contentType('video/mp4');
+    res.sendFile('./turtle.mp4', { root: __dirname });
+
+})
+
 app.get('/api2', (req, res) => {
 
     axios.get('http://109.158.65.154:8080/test2').then((response) => {
