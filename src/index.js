@@ -32,9 +32,9 @@ app.get('/api', async (req, res) => {
         responseType: 'stream'
     })
 
-    axiosResponse.data.pipe(res)
     res.header("Access-Control-Allow-Origin", "*");
     res.contentType('video/mp4');
+    axiosResponse.data.pipe(res)
 
 })
 
