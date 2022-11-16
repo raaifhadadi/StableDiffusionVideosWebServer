@@ -17,6 +17,8 @@ app.get('/generate', async (req, res) => {
         responseType: 'stream',
         params: query,
         timeout: 100000000
+    }).catch((error) => {
+        res.send(error)
     })
 
     axiosResponse.data.pipe(res)
@@ -30,6 +32,8 @@ app.get('/api', async (req, res) => {
     const axiosResponse = await axios({
         url: 'http://109.158.65.154:8080/test',
         responseType: 'stream'
+    }).catch((error) => {
+        res.send(error)
     })
 
     res.header("Access-Control-Allow-Origin", "*");
@@ -53,6 +57,8 @@ app.get('/api2', (req, res) => {
         res.header("Access-Control-Allow-Origin", "*");
         // res.contentType('video/mp4')
         res.send(response.data)
+    }).catch((error) => {
+        res.send(error)
     })
 })
 
