@@ -5,6 +5,7 @@ const port = 3001
 const serverURL = 'http://109.158.65.154:8080'  //TODO: extract to config
 
 var nextJobID = 1
+const jobStages = ['pending', 'genertaing initial frames', 'initial frames generated', 'generating video', 'video generated']
 
 // List of all the machines available
 // elements are of form:
@@ -14,7 +15,14 @@ var nextJobID = 1
 //   status: 'machine_status',
 //   lock: machine_lock
 // }
-const gpuMachines = []
+const gpuMachines = [
+    {
+        id: '1',
+        ip: serverURL,
+        status: 'available',
+        lock: false
+    }
+]
 
 // List of all the jobs available
 // elements are of form:
