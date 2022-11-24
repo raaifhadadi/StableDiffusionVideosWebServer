@@ -4,7 +4,7 @@ const app = express()
 const port = 3001
 const serverURL = 'http://109.158.65.154:8080'  //TODO: extract to config
 
-var nextJobId = 0
+var nextJobID = 1
 
 // List of all the machines available
 // elements are of form:
@@ -21,6 +21,7 @@ const gpuMachines = []
 // {
 //   id: 'job_id',
 //   status: 'job_status',
+//   machine: 'machine_id'
 //   body: {
 //     prompts: 'prompt1;promp1;...',
 //     mode: 'mode', 
@@ -29,8 +30,6 @@ const gpuMachines = []
 // }
 const requests = []
 
-// Map of all the jobs currently running to the machine they are running on
-const jobMap = {}
 
 /*
 NEW PROPOSED FLOW:
@@ -57,6 +56,34 @@ NEW PROPOSED FLOW:
             // client displays video
     }
 */
+
+// GET request to initialise a job
+app.get('/job', (req, res) => {
+    requests.push({
+        id: nextJobID,
+        status: 'pending',
+        machine: null,
+        body: req.query
+    })
+    console.log(requests)
+    nextJobID++
+    res.header("Access-Control-Allow-Origin", "*");
+    res.contentType('application/json');
+    res.send({ id: nextJobID - 1 })
+})
+
+// poll for job status
+app.get('/status', (req, res) => {
+    const jobID = req.query.jobID
+    const job = requests.find(job => job.id == jobID)
+    if (job) {
+        res.header("Access-Control-Allow-Origin", "*");
+        res.contentType('text/plain');
+        res.send({ status: job.status })
+    } else {
+        res.status(404).send('Job not found')
+    }
+})
 
 // Hello World
 app.get('/', (req, res) => {
