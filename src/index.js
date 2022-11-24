@@ -1,7 +1,62 @@
 const express = require('express')
 const axios = require('axios')
 const app = express()
-const port = 3000
+const port = 3001
+const serverURL = 'http://109.158.65.154:8080'  //TODO: extract to config
+
+var nextJobId = 0
+
+// List of all the machines available
+// elements are of form:
+// {
+//   id: 'machine_id',
+//   ip: 'xxx.xxx.xxx.xxx,
+//   status: 'machine_status',
+//   lock: machine_lock
+// }
+const gpuMachines = []
+
+// List of all the jobs available
+// elements are of form:
+// {
+//   id: 'job_id',
+//   status: 'job_status',
+//   body: {
+//     prompts: 'prompt1;promp1;...',
+//     mode: 'mode', 
+//     etc
+//   }
+// }
+const requests = []
+
+// Map of all the jobs currently running to the machine they are running on
+const jobMap = {}
+
+/*
+NEW PROPOSED FLOW:
+
+    1. Client sends a GET request with prompt, setting etc
+    2. Server responds with a job id, adds job to requests list
+
+    3. Client begins polling server for job status (GEt request with job id)
+    4. switch(job.status) {
+        case 'pending':
+            // client dislpays "waiting for machine" message
+            // server is trying to asign machine to first job in requests list
+        case 'generating init frames + int': 
+            // client displays "generating init frames" message + loading bar
+        case 'generating frames complete':
+            // client sends new GET request with job id and seed number
+            // server forwards response to gpu machine to gen video and reruns 200
+            // client begins polling again
+        case 'generating video + int':
+            // client displays "generating video " message + loading bar
+        case 'video complete':
+            // clinet sends get request to get the video
+            // server gets video, releases machine lock, and sends video to client
+            // client displays video
+    }
+*/
 
 // Hello World
 app.get('/', (req, res) => {
@@ -11,7 +66,7 @@ app.get('/', (req, res) => {
 
 // API to genereate initial frames
 app.get('/api/generateFrames', (req, res) => {
-    axios.get('http://109.158.65.154:8080/test')
+    axios.get(serverURL + '/test')
         .then(response => {
             res.send(response.data.data)
         })
@@ -26,7 +81,7 @@ app.get('/generate', async (req, res) => {
     const query = req.query
 
     axios({
-        url: 'http://109.158.65.154:8080/api',
+        url: serverURL + '/api',
         responseType: 'stream',
         params: query,
         timeout: 100000000
@@ -44,7 +99,7 @@ app.get('/generate', async (req, res) => {
 app.get('/getPreGeneratedVideo', async (req, res) => {
 
     axios({
-        url: 'http://109.158.65.154:8080/test',
+        url: serverURL + '/test',
         responseType: 'stream'
     }).then(response => {
         res.header("Access-Control-Allow-Origin", "*");
