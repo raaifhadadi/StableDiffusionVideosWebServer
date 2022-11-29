@@ -37,7 +37,16 @@ const gpuMachines = [
 //   }
 // }
 const requests = []
+// TODO: redesign to just hold job ids?
 
+// Map from job IDs to their status
+const jobs = new Map([])
+
+// TODO: should empty jobs sometime when we don't think they need it anymore
+// After we send the content to the client is ideal
+
+// TODO: what happens if the user doesn't select a frame? does the machine stay 'busy'?
+// could maybe have 2 queues to make a second wait less of a problem
 
 /*
 NEW PROPOSED FLOW:
@@ -64,6 +73,111 @@ NEW PROPOSED FLOW:
             // client displays video
     }
 */
+
+/*
+Queue management
+- Driven by requests (we don't need a loop just to monitor the queue)
+- When requests are being served, they schedule their own callbacks to completion
+- When a new request is made, we schedule a poll
+  - When we poll we schedule as many requests as we can (until no machine is free)
+- When a machine becomes free, we schedule a poll
+- For the second request (with the init frame selection) we just need to schedule callbacks (doesn't interact with the queue)
+*/
+
+function sleep(s) {
+  return new Promise(r => setTimeout(r, s * 1000))
+}
+
+app.get('/request', async (req, res) => {
+  queueRequest(req.query)
+  processQueue()
+
+  res.send('Hi')
+})
+
+function queueRequest(query) {
+  const jobID = nextJobID
+  nextJobID++
+
+  jobs.set(jobID, {
+    status: 'pending',
+    machine: null,
+    body: query
+  })
+
+  requests.push(jobID)
+}
+
+function processQueue() {
+  while (true) {
+    const machine = findFreeMachine()
+
+    if (machine === null || requests.length == 0) {
+      return
+    }
+
+    // Dequeue
+    const jobID = requests[0]
+    requests.shift()
+
+    const job = jobs.get(jobID)
+    assignJob(job, machine)
+    runJob(job, machine)
+  }
+}
+
+// Assign a pending job to a machine
+// Pre: the job is pending and the machine is free
+function assignJob(job, machine) {
+  console.assert(job.status == "pending")
+  console.assert(machine.status == "available")
+
+  job.status = 'generating'
+  job.machine = machine.id
+  machine.status = 'busy'
+}
+
+// Run an assigned job on a machine asyncronously
+async function runJob(job, machine) {
+  const url = 'http://' + machine.ip + '/api'
+  const params = job.body
+
+  // TODO: this needs to make the generation request to the machine
+  // this could either save the file to the server, or the machine should be saving the file, and then just return a filepath or something
+  await sleep(10)
+  //axios({
+  //    url: url,
+  //    params: params,
+  //    responseType: 'stream',
+  //    timeout: 100000000
+  //}).then(response => {
+  //    res.header("Access-Control-Allow-Origin", "*");
+  //    res.contentType('video/mp4');
+  //    response.data.pipe(res)
+  //}).catch((error) => {
+  //    res.status(500).send(error)
+  //})
+
+  // Update job and machine
+  completeJob(job, machine)
+}
+
+function completeJob(job, machine) {
+  console.assert(job.status == "generating")
+  console.assert(machine.status == "busy")
+
+  job.status = 'done'
+  machine.status = 'available'
+
+  processQueue()
+}
+
+// Get the first free machine
+// Returns null if no machine is free
+function findFreeMachine() {
+  return gpuMachines[0] // TODO
+}
+
 
 // GET request to initialise a job
 app.get('/job', (req, res) => {
@@ -97,7 +211,6 @@ app.get('/status', (req, res) => {
 app.get('/', (req, res) => {
     res.send('Hello World!')
 })
-
 
 // API to genereate initial frames
 app.get('/api/generateFrames', (req, res) => {
