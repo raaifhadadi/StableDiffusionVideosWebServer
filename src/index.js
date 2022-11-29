@@ -2,7 +2,7 @@ const express = require('express')
 const axios = require('axios')
 const app = express()
 const port = 3001
-const serverURL = 'http://109.158.65.154:8080'  //TODO: extract to config
+const serverURL = '109.158.65.154:8080'  //TODO: extract to config
 
 var nextJobID = 1
 const jobStages = ['pending', 'genertaing initial frames', 'initial frames generated', 'generating video', 'video generated']
@@ -85,99 +85,103 @@ Queue management
 */
 
 function sleep(s) {
-  return new Promise(r => setTimeout(r, s * 1000))
+    return new Promise(r => setTimeout(r, s * 1000))
 }
 
 app.get('/request', async (req, res) => {
-  queueRequest(req.query)
-  processQueue()
+    const jobID = queueRequest(req.query)
+    processQueue()
 
-  res.send('Hi')
+    res.header("Access-Control-Allow-Origin", "*");
+    res.contentType('application/json');
+    res.send({ id: jobID })
 })
 
 function queueRequest(query) {
-  const jobID = nextJobID
-  nextJobID++
+    const jobID = nextJobID
+    nextJobID++
 
-  jobs.set(jobID, {
-    status: 'pending',
-    machine: null,
-    body: query
-  })
+    jobs.set(jobID, {
+        status: 'pending',
+        machine: null,
+        body: query
+    })
 
-  requests.push(jobID)
+    requests.push(jobID)
+    return jobID;
 }
 
 function processQueue() {
-  while (true) {
-    const machine = findFreeMachine()
+    while (true) {
+        const machine = findFreeMachine()
 
-    if (machine === null || requests.length == 0) {
-      return
+        if (machine === null || requests.length == 0) {
+            return
+        }
+
+        // Dequeue
+        const jobID = requests.shift()
+
+        const job = jobs.get(jobID)
+        assignJob(job, machine)
+        runJob(job, machine)
     }
-
-    // Dequeue
-    const jobID = requests[0]
-    requests.shift()
-
-    const job = jobs.get(jobID)
-    assignJob(job, machine)
-    runJob(job, machine)
-  }
 }
 
 // Assign a pending job to a machine
 // Pre: the job is pending and the machine is free
 function assignJob(job, machine) {
-  console.assert(job.status == "pending")
-  console.assert(machine.status == "available")
+    console.assert(job.status == "pending")
+    console.assert(machine.status == "available")
 
-  job.status = 'generating'
-  job.machine = machine.id
-  machine.status = 'busy'
+    job.status = 'generating'
+    job.machine = machine.id
+    machine.status = 'busy'
 }
 
 // Run an assigned job on a machine asyncronously
 async function runJob(job, machine) {
-  const url = 'http://' + machine.ip + '/api'
-  const params = job.body
+    const url = 'http://' + machine.ip + '/api'
+    const params = job.body
 
-  // TODO: this needs to make the generation request to the machine
-  // this could either save the file to the server, or the machine should be saving the file, and then just return a filepath or something
-  await sleep(10)
-  //axios({
-  //    url: url,
-  //    params: params,
-  //    responseType: 'stream',
-  //    timeout: 100000000
-  //}).then(response => {
-  //    res.header("Access-Control-Allow-Origin", "*");
-  //    res.contentType('video/mp4');
-  //    response.data.pipe(res)
-  //}).catch((error) => {
-  //    res.status(500).send(error)
-  //})
+    console.log('job started')
 
-  // Update job and machine
-  completeJob(job, machine)
+    await axios({
+        url: url,
+        params: params,
+        timeout: 100000000
+        // TODO: response type: BLOB
+    }).catch((error) => {
+        console.log(error)
+    })
+
+    //TODO: store video in firebase
+
+    completeJob(job, machine)
+
+    console.log('job done')
 }
 
 function completeJob(job, machine) {
-  console.assert(job.status == "generating")
-  console.assert(machine.status == "busy")
+    console.assert(job.status == "generating")
+    console.assert(machine.status == "busy")
 
-  job.status = 'done'
-  machine.status = 'available'
+    job.status = 'done'
+    machine.status = 'available'
 
-  processQueue()
+    processQueue()
 }
 
 // Get the first free machine
 // Returns null if no machine is free
 function findFreeMachine() {
-  return gpuMachines[0] // TODO
+    for (const machine of gpuMachines) {
+        if (machine.status == 'available') {
+            return machine
+        }
+    }
+    return null;
 }
-
 
 // GET request to initialise a job
 app.get('/job', (req, res) => {
@@ -195,14 +199,34 @@ app.get('/job', (req, res) => {
 })
 
 // poll for job status
-app.get('/status', (req, res) => {
-    const jobID = req.query.jobID
-    const job = requests.find(job => job.id == jobID)
+app.get('/status', async (req, res) => {
+    const jobID = Number(req.query.jobID)
+
+    console.log(jobID)
+
+    const job = jobs.get(jobID)
+    console.log(job)
     if (job) {
-        res.header("Access-Control-Allow-Origin", "*");
-        res.contentType('text/plain');
-        res.send({ status: job.status })
+        if (job.status == 'generating') {
+            // get machine ip
+            const machine = gpuMachines.find(m => m.id == job.machine)
+            const url = 'http://' + machine.ip + '/getProgress'
+            await axios({
+                url: url,
+                respomseType: 'text'
+            }).then((response) => {
+                res.header("Access-Control-Allow-Origin", "*");
+                res.contentType('text/plain');
+                res.send({ progress: response.data, status: job.status })
+            })
+        } else {
+            res.header("Access-Control-Allow-Origin", "*");
+            res.contentType('text/plain');
+            res.send({ status: job.status })
+        }
+        // TODO: if status is generating, send progress
     } else {
+        res.header("Access-Control-Allow-Origin", "*");
         res.status(404).send('Job not found')
     }
 })
@@ -271,3 +295,28 @@ app.get('/api3', async (req, res) => {
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
 })
+
+
+app.get('/logjobs', (req, res) => {
+    console.log(jobs)
+    res.send('logged')
+})
+
+app.get('/logrequests', (req, res) => {
+    console.log(requests)
+    res.send('logged')
+})
+
+
+//axios({
+    //    url: url,
+    //    params: params,
+    //    responseType: 'stream',
+    //    timeout: 100000000
+    //}).then(response => {
+    //    res.header("Access-Control-Allow-Origin", "*");
+    //    res.contentType('video/mp4');
+    //    response.data.pipe(res)
+    //}).catch((error) => {
+    //    res.status(500).send(error)
+    //})
