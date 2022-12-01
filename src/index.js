@@ -152,7 +152,8 @@ async function runJob(job, machine) {
     timeout: 100000000
     // TODO: response type: BLOB
   }).catch((error) => {
-    console.log(error)
+    // console.log(error)
+    console.log('job failed')
   })
 
   //TODO: store video in firebase
@@ -218,6 +219,11 @@ app.get('/status', async (req, res) => {
         res.header("Access-Control-Allow-Origin", "*");
         res.contentType('text/plain');
         res.send({ progress: response.data, status: job.status })
+      }).catch((error) => {
+        console.log("couldn't get status")
+        res.header("Access-Control-Allow-Origin", "*");
+        res.contentType('text/plain');
+        res.send({ status: "error" })
       })
     } else {
       res.header("Access-Control-Allow-Origin", "*");
