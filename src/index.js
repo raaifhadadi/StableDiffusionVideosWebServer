@@ -16,12 +16,12 @@ const jobStages = ['pending', 'genertaing initial frames', 'initial frames gener
 //   lock: machine_lock
 // }
 const gpuMachines = [
-    {
-        id: '1',
-        ip: serverURL,
-        status: 'available',
-        lock: false
-    }
+  {
+    id: '1',
+    ip: serverURL,
+    status: 'available',
+    lock: false
+  }
 ]
 
 // List of all the jobs available
@@ -85,238 +85,260 @@ Queue management
 */
 
 function sleep(s) {
-    return new Promise(r => setTimeout(r, s * 1000))
+  return new Promise(r => setTimeout(r, s * 1000))
 }
 
 app.get('/request', async (req, res) => {
-    const jobID = queueRequest(req.query)
-    processQueue()
+  const jobID = queueRequest(req.query)
+  processQueue()
 
-    res.header("Access-Control-Allow-Origin", "*");
-    res.contentType('application/json');
-    res.send({ id: jobID })
+  res.header("Access-Control-Allow-Origin", "*");
+  res.contentType('application/json');
+  res.send({ id: jobID })
 })
 
 function queueRequest(query) {
-    const jobID = nextJobID
-    nextJobID++
+  const jobID = nextJobID
+  nextJobID++
 
-    jobs.set(jobID, {
-        status: 'pending',
-        machine: null,
-        body: query
-    })
+  jobs.set(jobID, {
+    status: 'pending',
+    machine: null,
+    body: query
+  })
 
-    requests.push(jobID)
-    return jobID;
+  requests.push(jobID)
+  return jobID;
 }
 
 function processQueue() {
-    while (true) {
-        const machine = findFreeMachine()
+  while (true) {
+    const machine = findFreeMachine()
 
-        if (machine === null || requests.length == 0) {
-            return
-        }
-
-        // Dequeue
-        const jobID = requests.shift()
-
-        const job = jobs.get(jobID)
-        assignJob(job, machine)
-        runJob(job, machine)
+    if (machine === null || requests.length == 0) {
+      return
     }
+
+    // Dequeue
+    const jobID = requests.shift()
+
+    const job = jobs.get(jobID)
+    assignJob(job, machine)
+    runJob(job, machine)
+  }
 }
 
 // Assign a pending job to a machine
 // Pre: the job is pending and the machine is free
 function assignJob(job, machine) {
-    console.assert(job.status == "pending")
-    console.assert(machine.status == "available")
+  console.assert(job.status == "pending")
+  console.assert(machine.status == "available")
 
-    job.status = 'generating'
-    job.machine = machine.id
-    machine.status = 'busy'
+  job.status = 'generating'
+  job.machine = machine.id
+  machine.status = 'busy'
 }
 
 // Run an assigned job on a machine asyncronously
 async function runJob(job, machine) {
-    const url = 'http://' + machine.ip + '/api'
-    const params = job.body
+  const url = 'http://' + machine.ip + '/api'
+  const params = job.body
 
-    console.log('job started')
+  console.log('job started')
 
-    await axios({
-        url: url,
-        params: params,
-        timeout: 100000000
-        // TODO: response type: BLOB
-    }).catch((error) => {
-        console.log(error)
-    })
+  await axios({
+    url: url,
+    params: params,
+    timeout: 100000000
+    // TODO: response type: BLOB
+  }).catch((error) => {
+    console.log(error)
+  })
 
-    //TODO: store video in firebase
+  //TODO: store video in firebase
 
-    completeJob(job, machine)
+  completeJob(job, machine)
 
-    console.log('job done')
+  console.log('job done')
 }
 
 function completeJob(job, machine) {
-    console.assert(job.status == "generating")
-    console.assert(machine.status == "busy")
+  console.assert(job.status == "generating")
+  console.assert(machine.status == "busy")
 
-    job.status = 'done'
-    machine.status = 'available'
+  job.status = 'done'
+  machine.status = 'available'
 
-    processQueue()
+  processQueue()
 }
 
 // Get the first free machine
 // Returns null if no machine is free
 function findFreeMachine() {
-    for (const machine of gpuMachines) {
-        if (machine.status == 'available') {
-            return machine
-        }
+  for (const machine of gpuMachines) {
+    if (machine.status == 'available') {
+      return machine
     }
-    return null;
+  }
+  return null;
 }
 
 // GET request to initialise a job
 app.get('/job', (req, res) => {
-    requests.push({
-        id: nextJobID,
-        status: 'pending',
-        machine: null,
-        body: req.query
-    })
-    console.log(requests)
-    nextJobID++
-    res.header("Access-Control-Allow-Origin", "*");
-    res.contentType('application/json');
-    res.send({ id: nextJobID - 1 })
+  requests.push({
+    id: nextJobID,
+    status: 'pending',
+    machine: null,
+    body: req.query
+  })
+  console.log(requests)
+  nextJobID++
+  res.header("Access-Control-Allow-Origin", "*");
+  res.contentType('application/json');
+  res.send({ id: nextJobID - 1 })
 })
 
 // poll for job status
 app.get('/status', async (req, res) => {
-    const jobID = Number(req.query.jobID)
+  const jobID = Number(req.query.jobID)
 
-    console.log(jobID)
+  console.log(jobID)
 
-    const job = jobs.get(jobID)
-    console.log(job)
-    if (job) {
-        if (job.status == 'generating') {
-            // get machine ip
-            const machine = gpuMachines.find(m => m.id == job.machine)
-            const url = 'http://' + machine.ip + '/getProgress'
-            await axios({
-                url: url,
-                respomseType: 'text'
-            }).then((response) => {
-                res.header("Access-Control-Allow-Origin", "*");
-                res.contentType('text/plain');
-                res.send({ progress: response.data, status: job.status })
-            })
-        } else {
-            res.header("Access-Control-Allow-Origin", "*");
-            res.contentType('text/plain');
-            res.send({ status: job.status })
-        }
-        // TODO: if status is generating, send progress
-    } else {
+  const job = jobs.get(jobID)
+  console.log(job)
+  if (job) {
+    if (job.status == 'generating') {
+      // get machine ip
+      const machine = gpuMachines.find(m => m.id == job.machine)
+      const url = 'http://' + machine.ip + '/getProgress'
+      await axios({
+        url: url,
+        respomseType: 'text'
+      }).then((response) => {
         res.header("Access-Control-Allow-Origin", "*");
-        res.status(404).send('Job not found')
+        res.contentType('text/plain');
+        res.send({ progress: response.data, status: job.status })
+      })
+    } else {
+      res.header("Access-Control-Allow-Origin", "*");
+      res.contentType('text/plain');
+      res.send({ status: job.status })
     }
+    // TODO: if status is generating, send progress
+  } else {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.status(404).send('Job not found')
+  }
 })
 
 // Hello World
 app.get('/', (req, res) => {
-    res.send('Hello World!')
+  res.send('Hello World!')
 })
 
 // API to genereate initial frames
 app.get('/api/generateFrames', (req, res) => {
-    axios.get(serverURL + '/test')
-        .then(response => {
-            res.send(response.data.data)
-        })
-        .catch(error => {
-            res.send(error)
-        })
+  axios.get(serverURL + '/test')
+    .then(response => {
+      res.send(response.data.data)
+    })
+    .catch(error => {
+      res.send(error)
+    })
 })
 
 // Api to generate and return a video
 app.get('/generate', async (req, res) => {
 
-    const query = req.query
+  const query = req.query
 
-    axios({
-        url: serverURL + '/api',
-        responseType: 'stream',
-        params: query,
-        timeout: 100000000
-    }).then(response => {
-        res.header("Access-Control-Allow-Origin", "*");
-        res.contentType('video/mp4');
-        response.data.pipe(res)
-    }).catch((error) => {
-        res.status(500).send(error)
-    })
+  axios({
+    url: serverURL + '/api',
+    responseType: 'stream',
+    params: query,
+    timeout: 100000000
+  }).then(response => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.contentType('video/mp4');
+    response.data.pipe(res)
+  }).catch((error) => {
+    res.status(500).send(error)
+  })
 
 })
 
 // *Unused* api to check server returns pre-generated video from flask fs
 app.get('/getPreGeneratedVideo', async (req, res) => {
 
-    axios({
-        url: serverURL + '/test',
-        responseType: 'stream'
-    }).then(response => {
-        res.header("Access-Control-Allow-Origin", "*");
-        res.contentType('video/mp4');
-        response.data.pipe(res)
-    }).catch(error => {
-        res.status(500).send(error);
-    })
+  axios({
+    url: serverURL + '/test',
+    responseType: 'stream'
+  }).then(response => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.contentType('video/mp4');
+    response.data.pipe(res)
+  }).catch(error => {
+    res.status(500).send(error);
+  })
 
 })
 
 // *Unused* api to return a pre-generated video from express fs
 app.get('/api3', async (req, res) => {
 
-    res.header("Access-Control-Allow-Origin", "*");
-    res.contentType('video/mp4');
-    res.sendFile('./turtle.mp4', { root: __dirname });
+  res.header("Access-Control-Allow-Origin", "*");
+  res.contentType('video/mp4');
+  res.sendFile('./turtle.mp4', { root: __dirname });
 
 })
 
 app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
+  console.log(`Example app listening on port ${port}`)
 })
 
 
 app.get('/logjobs', (req, res) => {
-    console.log(jobs)
-    res.send('logged')
+  console.log(jobs)
+  res.send('logged')
 })
 
 app.get('/logrequests', (req, res) => {
-    console.log(requests)
-    res.send('logged')
+  console.log(requests)
+  res.send('logged')
 })
 
 
 //axios({
-    //    url: url,
-    //    params: params,
-    //    responseType: 'stream',
-    //    timeout: 100000000
-    //}).then(response => {
-    //    res.header("Access-Control-Allow-Origin", "*");
-    //    res.contentType('video/mp4');
-    //    response.data.pipe(res)
-    //}).catch((error) => {
-    //    res.status(500).send(error)
-    //})
+//    url: url,
+//    params: params,
+//    responseType: 'stream',
+//    timeout: 100000000
+//}).then(response => {
+//    res.header("Access-Control-Allow-Origin", "*");
+//    res.contentType('video/mp4');
+//    response.data.pipe(res)
+//}).catch((error) => {
+//    res.status(500).send(error)
+//})
+
+
+
+/// TEMPORARY
+app.get('/getCreatedVideo', (req, res) => {
+  console.log('getCreatedVideo')
+
+  const query = req.query;
+
+  axios({
+    url: 'http://109.158.65.154:8080/getVideo',
+    responseType: 'stream',
+    params: query,
+    timeout: 100000000
+  }).then(response => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.contentType('video/mp4');
+    response.data.pipe(res)
+  }).catch((error) => {
+    res.status(500).send(error)
+  })
+})
