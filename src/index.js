@@ -1,11 +1,53 @@
-const express = require('express')
-const axios = require('axios')
-const app = express()
-const port = 3001
-const serverURL = '109.158.65.154:8080'  //TODO: extract to config
+const express = require("express");
+const axios = require("axios");
+const fs = require("fs");
+// import * as fs from "node:fs";
+var Blob = require("blob");
+const { initializeApp } = require("firebase-admin/app");
+const { Storage } = require("@google-cloud/storage");
+const app = express();
+const port = 3001;
+const serverURL = "109.158.65.154:8080"; //TODO: extract to config
+const GOOGLE_APPLICATION_CREDENTIALS =
+  "./stable-diffusion-videos-firebase-adminsdk-1hsdk-e7dde4e502.json";
 
-var nextJobID = 1
-const jobStages = ['pending', 'genertaing initial frames', 'initial frames generated', 'generating video', 'video generated']
+///////////////////////////////////////////////////////////////from here
+
+// const fetch = require("node-fetch");
+// const fs = require("fs");
+
+// const response = await fetch(
+//   "https://stablediffusionvideoswebserver-production.up.railway.app/api3"
+// );
+// const buffer = await response.buffer();
+
+// fs.writeFile(`./videos/name.mp4`, buffer, () =>
+//   console.log("finished downloading video!")
+// );
+
+///////////////////////////////////////////////tohere
+
+// initializeApp({
+//   credential: applicationDefault(),
+//   databaseURL: "https://stable-diffusion-videos-default-rtdb.firebaseio.com",
+// });
+
+const gc = new Storage({
+  keyFilename: GOOGLE_APPLICATION_CREDENTIALS,
+  projectId: "stable-diffusion-videos",
+});
+
+const bucket = gc.bucket("gcf-sources-59636912597-us-central1");
+bucket.file("./api3.mp4");
+
+var nextJobID = 1;
+const jobStages = [
+  "pending",
+  "genertaing initial frames",
+  "initial frames generated",
+  "generating video",
+  "video generated",
+];
 
 // List of all the machines available
 // elements are of form:
@@ -16,13 +58,13 @@ const jobStages = ['pending', 'genertaing initial frames', 'initial frames gener
 //   lock: machine_lock
 // }
 const gpuMachines = [
-    {
-        id: '1',
-        ip: serverURL,
-        status: 'available',
-        lock: false
-    }
-]
+  {
+    id: "1",
+    ip: serverURL,
+    status: "available",
+    lock: false,
+  },
+];
 
 // List of all the jobs available
 // elements are of form:
@@ -32,15 +74,15 @@ const gpuMachines = [
 //   machine: 'machine_id'
 //   body: {
 //     prompts: 'prompt1;promp1;...',
-//     mode: 'mode', 
+//     mode: 'mode',
 //     etc
 //   }
 // }
-const requests = []
+const requests = [];
 // TODO: redesign to just hold job ids?
 
 // Map from job IDs to their status
-const jobs = new Map([])
+const jobs = new Map([]);
 
 // TODO: should empty jobs sometime when we don't think they need it anymore
 // After we send the content to the client is ideal
@@ -85,238 +127,260 @@ Queue management
 */
 
 function sleep(s) {
-    return new Promise(r => setTimeout(r, s * 1000))
+  return new Promise((r) => setTimeout(r, s * 1000));
 }
 
-app.get('/request', async (req, res) => {
-    const jobID = queueRequest(req.query)
-    processQueue()
+app.get("/request", async (req, res) => {
+  const jobID = queueRequest(req.query);
+  processQueue();
 
-    res.header("Access-Control-Allow-Origin", "*");
-    res.contentType('application/json');
-    res.send({ id: jobID })
-})
+  res.header("Access-Control-Allow-Origin", "*");
+  res.contentType("application/json");
+  res.send({ id: jobID });
+});
 
 function queueRequest(query) {
-    const jobID = nextJobID
-    nextJobID++
+  const jobID = nextJobID;
+  nextJobID++;
 
-    jobs.set(jobID, {
-        status: 'pending',
-        machine: null,
-        body: query
-    })
+  jobs.set(jobID, {
+    status: "pending",
+    machine: null,
+    body: query,
+  });
 
-    requests.push(jobID)
-    return jobID;
+  requests.push(jobID);
+  return jobID;
 }
 
 function processQueue() {
-    while (true) {
-        const machine = findFreeMachine()
+  while (true) {
+    const machine = findFreeMachine();
 
-        if (machine === null || requests.length == 0) {
-            return
-        }
-
-        // Dequeue
-        const jobID = requests.shift()
-
-        const job = jobs.get(jobID)
-        assignJob(job, machine)
-        runJob(job, machine)
+    if (machine === null || requests.length == 0) {
+      return;
     }
+
+    // Dequeue
+    const jobID = requests.shift();
+
+    const job = jobs.get(jobID);
+    assignJob(job, machine);
+    runJob(job, machine);
+  }
 }
 
 // Assign a pending job to a machine
 // Pre: the job is pending and the machine is free
 function assignJob(job, machine) {
-    console.assert(job.status == "pending")
-    console.assert(machine.status == "available")
+  console.assert(job.status == "pending");
+  console.assert(machine.status == "available");
 
-    job.status = 'generating'
-    job.machine = machine.id
-    machine.status = 'busy'
+  job.status = "generating";
+  job.machine = machine.id;
+  machine.status = "busy";
 }
 
 // Run an assigned job on a machine asyncronously
 async function runJob(job, machine) {
-    const url = 'http://' + machine.ip + '/api'
-    const params = job.body
+  //   const url = "http://" + machine.ip + "/api";
+  const url1 =
+    "https://stablediffusionvideoswebserver-production.up.railway.app/api3";
+  const params = job.body;
 
-    console.log('job started')
+  console.log("job started");
 
-    await axios({
-        url: url,
-        params: params,
-        timeout: 100000000
-        // TODO: response type: BLOB
-    }).catch((error) => {
-        console.log(error)
-    })
+  const video = await axios({
+    method: "get",
+    url: url1,
+    params: params,
+    timeout: 100000000,
+    responseType: "stream",
+  }).catch((error) => {
+    console.log(error);
+  });
 
-    //TODO: store video in firebase
+  // replace userId with the actual userId to be sent as param from frontend, similary for prompt
+  const userId = "3";
+  const prompt = "aVideoDuuuuud";
+  const vidTempStore = "./user" + userId + "-" + prompt + ".mp4";
+  video.data.pipe(fs.createWriteStream(vidTempStore));
 
-    completeJob(job, machine)
+  await new Promise((resolve, reject) => {
+    video.data.on("end", () => {
+      resolve();
+    });
+  }).then(() => {
+    const fileDest = "user" + userId + "/" + prompt + ".mp4"; // please replace prompt1 with the actual prompt sent from front end as a parameter
+    const ws = bucket
+      .upload(vidTempStore, {
+        destination: fileDest,
+      })
+      .then(() => {
+        fs.unlink(vidTempStore, (err) => {
+          if (err) throw err;
+          console.log(vidTempStore + " was deleted");
+        });
+      });
+  });
 
-    console.log('job done')
+  completeJob(job, machine);
+
+  console.log("job done");
 }
 
 function completeJob(job, machine) {
-    console.assert(job.status == "generating")
-    console.assert(machine.status == "busy")
+  console.assert(job.status == "generating");
+  console.assert(machine.status == "busy");
 
-    job.status = 'done'
-    machine.status = 'available'
+  job.status = "done";
+  machine.status = "available";
 
-    processQueue()
+  processQueue();
 }
 
 // Get the first free machine
 // Returns null if no machine is free
 function findFreeMachine() {
-    for (const machine of gpuMachines) {
-        if (machine.status == 'available') {
-            return machine
-        }
+  for (const machine of gpuMachines) {
+    if (machine.status == "available") {
+      return machine;
     }
-    return null;
+  }
+  return null;
 }
 
 // GET request to initialise a job
-app.get('/job', (req, res) => {
-    requests.push({
-        id: nextJobID,
-        status: 'pending',
-        machine: null,
-        body: req.query
-    })
-    console.log(requests)
-    nextJobID++
-    res.header("Access-Control-Allow-Origin", "*");
-    res.contentType('application/json');
-    res.send({ id: nextJobID - 1 })
-})
+app.get("/job", (req, res) => {
+  requests.push({
+    id: nextJobID,
+    status: "pending",
+    machine: null,
+    body: req.query,
+  });
+  console.log(requests);
+  nextJobID++;
+  res.header("Access-Control-Allow-Origin", "*");
+  res.contentType("application/json");
+  res.send({ id: nextJobID - 1 });
+});
 
 // poll for job status
-app.get('/status', async (req, res) => {
-    const jobID = Number(req.query.jobID)
+app.get("/status", async (req, res) => {
+  const jobID = Number(req.query.jobID);
 
-    console.log(jobID)
+  console.log(jobID);
 
-    const job = jobs.get(jobID)
-    console.log(job)
-    if (job) {
-        if (job.status == 'generating') {
-            // get machine ip
-            const machine = gpuMachines.find(m => m.id == job.machine)
-            const url = 'http://' + machine.ip + '/getProgress'
-            await axios({
-                url: url,
-                respomseType: 'text'
-            }).then((response) => {
-                res.header("Access-Control-Allow-Origin", "*");
-                res.contentType('text/plain');
-                res.send({ progress: response.data, status: job.status })
-            })
-        } else {
-            res.header("Access-Control-Allow-Origin", "*");
-            res.contentType('text/plain');
-            res.send({ status: job.status })
-        }
-        // TODO: if status is generating, send progress
-    } else {
+  const job = jobs.get(jobID);
+  console.log(job);
+  if (job) {
+    if (job.status == "generating") {
+      // get machine ip
+      const machine = gpuMachines.find((m) => m.id == job.machine);
+      const url = "http://" + machine.ip + "/getProgress";
+      await axios({
+        url: url,
+        respomseType: "text",
+      }).then((response) => {
         res.header("Access-Control-Allow-Origin", "*");
-        res.status(404).send('Job not found')
+        res.contentType("text/plain");
+        res.send({ progress: response.data, status: job.status });
+      });
+    } else {
+      res.header("Access-Control-Allow-Origin", "*");
+      res.contentType("text/plain");
+      res.send({ status: job.status });
     }
-})
+    // TODO: if status is generating, send progress
+  } else {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.status(404).send("Job not found");
+  }
+});
 
 // Hello World
-app.get('/', (req, res) => {
-    res.send('Hello World!')
-})
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
 
 // API to genereate initial frames
-app.get('/api/generateFrames', (req, res) => {
-    axios.get(serverURL + '/test')
-        .then(response => {
-            res.send(response.data.data)
-        })
-        .catch(error => {
-            res.send(error)
-        })
-})
+app.get("/api/generateFrames", (req, res) => {
+  axios
+    .get(serverURL + "/test")
+    .then((response) => {
+      res.send(response.data.data);
+    })
+    .catch((error) => {
+      res.send(error);
+    });
+});
 
 // Api to generate and return a video
-app.get('/generate', async (req, res) => {
+app.get("/generate", async (req, res) => {
+  const query = req.query;
 
-    const query = req.query
-
-    axios({
-        url: serverURL + '/api',
-        responseType: 'stream',
-        params: query,
-        timeout: 100000000
-    }).then(response => {
-        res.header("Access-Control-Allow-Origin", "*");
-        res.contentType('video/mp4');
-        response.data.pipe(res)
-    }).catch((error) => {
-        res.status(500).send(error)
+  axios({
+    url: serverURL + "/api",
+    responseType: "stream",
+    params: query,
+    timeout: 100000000,
+  })
+    .then((response) => {
+      res.header("Access-Control-Allow-Origin", "*");
+      res.contentType("video/mp4");
+      response.data.pipe(res);
     })
-
-})
+    .catch((error) => {
+      res.status(500).send(error);
+    });
+});
 
 // *Unused* api to check server returns pre-generated video from flask fs
-app.get('/getPreGeneratedVideo', async (req, res) => {
-
-    axios({
-        url: serverURL + '/test',
-        responseType: 'stream'
-    }).then(response => {
-        res.header("Access-Control-Allow-Origin", "*");
-        res.contentType('video/mp4');
-        response.data.pipe(res)
-    }).catch(error => {
-        res.status(500).send(error);
+app.get("/getPreGeneratedVideo", async (req, res) => {
+  axios({
+    url: serverURL + "/test",
+    responseType: "stream",
+  })
+    .then((response) => {
+      res.header("Access-Control-Allow-Origin", "*");
+      res.contentType("video/mp4");
+      response.data.pipe(res);
     })
-
-})
+    .catch((error) => {
+      res.status(500).send(error);
+    });
+});
 
 // *Unused* api to return a pre-generated video from express fs
-app.get('/api3', async (req, res) => {
-
-    res.header("Access-Control-Allow-Origin", "*");
-    res.contentType('video/mp4');
-    res.sendFile('./turtle.mp4', { root: __dirname });
-
-})
+app.get("/api3", async (req, res) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.contentType("video/mp4");
+  res.sendFile("./turtle.mp4", { root: __dirname });
+});
 
 app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
-})
+  console.log(`Example app listening on port ${port}`);
+});
 
+app.get("/logjobs", (req, res) => {
+  console.log(jobs);
+  res.send("logged");
+});
 
-app.get('/logjobs', (req, res) => {
-    console.log(jobs)
-    res.send('logged')
-})
-
-app.get('/logrequests', (req, res) => {
-    console.log(requests)
-    res.send('logged')
-})
-
+app.get("/logrequests", (req, res) => {
+  console.log(requests);
+  res.send("logged");
+});
 
 //axios({
-    //    url: url,
-    //    params: params,
-    //    responseType: 'stream',
-    //    timeout: 100000000
-    //}).then(response => {
-    //    res.header("Access-Control-Allow-Origin", "*");
-    //    res.contentType('video/mp4');
-    //    response.data.pipe(res)
-    //}).catch((error) => {
-    //    res.status(500).send(error)
-    //})
+//    url: url,
+//    params: params,
+//    responseType: 'stream',
+//    timeout: 100000000
+//}).then(response => {
+//    res.header("Access-Control-Allow-Origin", "*");
+//    res.contentType('video/mp4');
+//    response.data.pipe(res)
+//}).catch((error) => {
+//    res.status(500).send(error)
+//})
