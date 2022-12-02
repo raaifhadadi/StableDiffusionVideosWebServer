@@ -1,9 +1,10 @@
 const express = require('express')
 const axios = require('axios')
+const cors = require('cors')
 const app = express()
 const port = 3001
 const serverURL = '109.158.65.154:8080'  //TODO: extract to config
-
+app.use(cors())
 var nextJobID = 1
 const jobStages = ['pending', 'genertaing initial frames', 'initial frames generated', 'generating video', 'video generated']
 
