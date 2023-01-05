@@ -242,8 +242,6 @@ app.get('/status', async (req, res) => {
 // Hello World
 app.get('/', (req, res) => {
   res.send('Hello World!')
-  console.log(serverURL)
-  console.log(port)
 })
 
 // API to genereate initial frames
