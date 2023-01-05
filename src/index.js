@@ -1,9 +1,10 @@
+require('dotenv').config()
 const express = require('express')
 const axios = require('axios')
 const cors = require('cors')
 const app = express()
-const port = 3001
-const serverURL = '109.158.65.154:8080'  //TODO: extract to config
+const port = process.env.PORT | 3001
+const serverURL = process.env.COMPUTE_ONE + ':8080'
 app.use(cors())
 var nextJobID = 1
 const jobStages = ['pending', 'genertaing initial frames', 'initial frames generated', 'generating video', 'video generated']
@@ -241,6 +242,8 @@ app.get('/status', async (req, res) => {
 // Hello World
 app.get('/', (req, res) => {
   res.send('Hello World!')
+  console.log(serverURL)
+  console.log(port)
 })
 
 // API to genereate initial frames
