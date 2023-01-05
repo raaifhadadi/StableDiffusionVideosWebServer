@@ -340,7 +340,7 @@ app.get('/getCreatedVideo', (req, res) => {
   const query = req.query;
 
   axios({
-    url: 'http://109.158.65.154:8080/getVideo',
+    url: 'http://' + serverURL + '/getVideo',
     responseType: 'stream',
     params: query,
     timeout: 100000000
