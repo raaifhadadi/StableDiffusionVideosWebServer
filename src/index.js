@@ -11,6 +11,10 @@ app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
+const bucketName = "stable-diffusion-videos.appspot.com";
+const storage = new Storage();
+const bucket = storage.bucket(bucketName);
+
 var nextJobID = 1;
 const jobStages = [
   "pending",
@@ -350,37 +354,56 @@ app.get("/getCreatedVideo", (req, res) => {
       // receiving video and sending it to frontend
       res.header("Access-Control-Allow-Origin", "*");
       res.contentType("video/mp4");
+      console.log("response is");
+      console.log(response);
       response.data.pipe(res);
 
       // desperation
       console.log("pls work");
 
-      // writing file to local storage
-      response.data.pipe(fs.createWriteStream("test.mp4"));
-
-      // writing file from local storage to google cloud
-      console.log("uploading to google cloud");
-      const bucketName = "stable-diffusion-videos.appspot.com";
-      console.log("uploading to google cloud1");
-      const storage = new Storage();
-      console.log("uploading to google cloud2");
-      const options = { destination: req.query.user + "/dw.mp4" };
-      console.log("uploading to google cloud3");
-
+      // writing file to google cloud
       response.data.pipe(
-        storage
-          .bucket(bucketName)
-          .file(req.query.user + "/dw.mp4")
+        bucket
+          .file(req.query.user + "/" + req.query.fileName + ".mp4")
           .createWriteStream({ resumable: false, gzip: true })
       );
-      // storage.bucket(bucketName).upload("test.mp4", options);
-
-      console.log("uploading to google cloud4");
-      console.log(`test.mp4 uploaded to ${bucketName}`);
-      console.log("uploading to google cloud5");
     })
     .catch((error) => {
       console.log("errorrrrrr");
       res.status(500).send(error);
     });
 });
+
+app.get("/getGalleryVideos", async (req, res) => {
+  const [files] = await bucket.getFiles(bucketName, { prefix: req.query.user });
+  const fileNames = files.map((file) => file.name);
+
+  const sumFiles = [];
+  for (let i = 0; i < fileNames.length; i++) {
+    // console.log("aaaaa");
+    await bucket.file(fileNames[i]).makePublic();
+    sumFiles.push(bucket.file(fileNames[i]).publicUrl());
+  }
+  res.json({ files: sumFiles });
+});
+
+// app.get("/getGalleryVideos", async (req, res) => {
+//   const [files] = await bucket.getFiles(bucketName, { prefix: req.query.user });
+//   const fileNames = files.map((file) => file.name);
+
+//   const sumFiles = [];
+//   for (let i = 0; i < fileNames.length; i++) {
+//     const dw = await bucket.file(fileNames[0]);
+//     console.log("aaaaa");
+//     bucket.file(fileNames[0]).makePublic();
+//     console.log(dw.publicUrl());
+//     console.log("bbbbb");
+//     await bucket
+//       .file(fileNames[i])
+//       .download()
+//       .then((data) => {
+//         sumFiles.push(data);
+//       });
+//   }
+//   res.json(sumFiles);
+// });
