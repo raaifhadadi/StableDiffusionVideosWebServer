@@ -8,6 +8,7 @@ const fs = require("fs");
 const app = express();
 const port = process.env.PORT | 3001
 const serverURL = process.env.COMPUTE_ONE + ':8080'
+const serverURLTwo = process.env.COMPUTE_TWO + ':8080'
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -37,6 +38,12 @@ const gpuMachines = [
   {
     id: "1",
     ip: serverURL,
+    status: "available",
+    lock: false,
+  },
+  {
+    id: "2",
+    ip: serverURLTwo,
     status: "available",
     lock: false,
   },
@@ -195,6 +202,7 @@ function completeJob(job, machine) {
 function findFreeMachine() {
   for (const machine of gpuMachines) {
     if (machine.status == "available") {
+      // Check machine is online
       return machine;
     }
   }
@@ -359,16 +367,16 @@ app.get("/getCreatedVideo", (req, res) => {
       res.contentType("video/mp4");
       response.data.pipe(res);
 
-      try {
-        // writing file to google cloud
-        response.data.pipe(
-          bucket
-            .file(req.query.user + "/" + req.query.fileName + ".mp4")
-            .createWriteStream({ resumable: false, gzip: true })
-        );
-      } catch (error) {
-        console.log("error writing to google cloud");
-      }
+      // try {
+      //   // writing file to google cloud
+      //   response.data.pipe(
+      //     bucket
+      //       .file(req.query.user + "/" + req.query.fileName + ".mp4")
+      //       .createWriteStream({ resumable: false, gzip: true })
+      //   );
+      // } catch (error) {
+      //   console.log("error writing to google cloud");
+      // }
     })
     .catch((error) => {
       console.log("eroor getting video from flask server");
