@@ -269,14 +269,13 @@ app.get("/api/generateFrames", (req, res) => {
     });
 });
 
-// Api to generate and return a video
+// Api to generate and return a video  - UNUSED
 app.get("/generate", async (req, res) => {
-  console.log("generate request received");
+  console.log("Send request to flask server");
   const query = req.query;
 
   axios({
     url: serverURL + '/api',
-    // url: "https://stablediffusionvideoswebserver-production.up.railway.app/api3",
     responseType: "stream",
     params: query,
     timeout: 100000000,
@@ -341,13 +340,12 @@ app.get("/logrequests", (req, res) => {
 
 /// TEMPORARY
 app.get("/getCreatedVideo", (req, res) => {
-  console.log("getCreatedVideo");
-  console.log("query is " + req.query.user);
+  console.log("getCreatedVideo:");
   const query = req.query;
   // get machine ip
   const job = jobs.get(Number(query.jobID));
   const machine = gpuMachines.find((m) => m.id == job.machine);
-  console.log("machine is " + machine.ip);
+  console.log(" - getting video for " + req.query.user + " from " + machine.ip);
 
   axios({
     url: "http://" + machine.ip + "/getVideo",
@@ -359,11 +357,7 @@ app.get("/getCreatedVideo", (req, res) => {
       // receiving video and sending it to frontend
       res.header("Access-Control-Allow-Origin", "*");
       res.contentType("video/mp4");
-      console.log("response is");
       response.data.pipe(res);
-
-      // desperation
-      console.log("pls work");
 
       try {
         // writing file to google cloud
@@ -377,7 +371,7 @@ app.get("/getCreatedVideo", (req, res) => {
       }
     })
     .catch((error) => {
-      console.log("errorrrrrr");
+      console.log("eroor getting video from flask server");
       res.status(500).send(error);
     });
 });
