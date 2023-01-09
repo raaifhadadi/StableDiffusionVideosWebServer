@@ -26,6 +26,11 @@ const jobStages = [
   "video generated",
 ];
 
+function queuer() {
+  setTimeout(() => { queuer(); }, 10000);
+  processQueue();
+}
+
 // List of all the machines available
 // elements are of form:
 // {
@@ -203,6 +208,13 @@ function findFreeMachine() {
   for (const machine of gpuMachines) {
     if (machine.status == "available") {
       // Check machine is online
+      axios({
+        url: "http://" + machine.ip + "/",
+        timeout: 1000,
+      }).catch((error) => {
+        console.log("machine offline");
+        machine.status = "offline";
+      })
       return machine;
     }
   }
@@ -322,6 +334,7 @@ app.get("/api3", async (req, res) => {
 });
 
 app.listen(port, () => {
+  queuer();
   console.log(`Example app listening on port ${port}`);
 });
 
