@@ -145,7 +145,7 @@ function processQueue() {
   while (true) {
 
     if (requests.length == 0) {
-      requests.length == 0
+      return;
     }
 
     const machine = findFreeMachine();
