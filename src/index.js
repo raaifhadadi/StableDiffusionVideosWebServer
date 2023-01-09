@@ -143,9 +143,14 @@ function queueRequest(query) {
 
 function processQueue() {
   while (true) {
+
+    if (requests.length == 0) {
+      requests.length == 0
+    }
+
     const machine = findFreeMachine();
 
-    if (machine === null || requests.length == 0) {
+    if (machine === null) {
       return;
     }
 
