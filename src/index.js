@@ -387,11 +387,13 @@ app.get("/getCreatedVideo", (req, res) => {
 
       try {
         // writing file to google cloud
+        console.log(" - writing video to google cloud");
         response.data.pipe(
           bucket
             .file(req.query.user + "/" + req.query.fileName + ".mp4")
             .createWriteStream({ resumable: false, gzip: true })
         );
+        console.log(" - video written to google cloud");
       } catch (error) {
         console.log("error writing to google cloud");
       }
@@ -403,7 +405,7 @@ app.get("/getCreatedVideo", (req, res) => {
 });
 
 app.get("/getGalleryVideos", async (req, res) => {
-  const [files] = await bucket.getFiles(bucketName, { prefix: req.query.user });
+  const [files] = await bucket.getFiles({ prefix: req.query.user });
   const fileNames = files.map((file) => file.name);
 
   const sumFiles = [];
