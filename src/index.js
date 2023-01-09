@@ -219,6 +219,7 @@ function findFreeMachine() {
       }).catch((error) => {
         console.log("machine offline");
       })
+      console.log("machine online");
       return machine;
     }
   }
@@ -376,7 +377,7 @@ app.get("/getCreatedVideo", (req, res) => {
     url: "http://" + machine.ip + "/getVideo",
     responseType: "stream",
     params: query,
-    timeout: 100000000,
+    timeout: 10000,
   })
     .then((response) => {
       // receiving video and sending it to frontend
@@ -384,16 +385,16 @@ app.get("/getCreatedVideo", (req, res) => {
       res.contentType("video/mp4");
       response.data.pipe(res);
 
-      // try {
-      //   // writing file to google cloud
-      //   response.data.pipe(
-      //     bucket
-      //       .file(req.query.user + "/" + req.query.fileName + ".mp4")
-      //       .createWriteStream({ resumable: false, gzip: true })
-      //   );
-      // } catch (error) {
-      //   console.log("error writing to google cloud");
-      // }
+      try {
+        // writing file to google cloud
+        response.data.pipe(
+          bucket
+            .file(req.query.user + "/" + req.query.fileName + ".mp4")
+            .createWriteStream({ resumable: false, gzip: true })
+        );
+      } catch (error) {
+        console.log("error writing to google cloud");
+      }
     })
     .catch((error) => {
       console.log("eroor getting video from flask server");
@@ -408,7 +409,6 @@ app.get("/getGalleryVideos", async (req, res) => {
   const sumFiles = [];
   for (let i = 0; i < fileNames.length; i++) {
     // console.log("aaaaa");
-    await bucket.file(fileNames[i]).makePublic();
     sumFiles.push(bucket.file(fileNames[i]).publicUrl());
   }
   res.json({ files: sumFiles });
