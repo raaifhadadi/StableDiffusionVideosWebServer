@@ -5,8 +5,8 @@ const bodyParser = require("body-parser");
 const { Storage } = require("@google-cloud/storage");
 const fs = require("fs");
 const app = express();
-const port = 3001;
-const serverURL = "109.158.65.154:8080"; //TODO: extract to config
+const port = process.env.PORT | 3001
+const serverURL = process.env.COMPUTE_ONE + ':8080'
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
