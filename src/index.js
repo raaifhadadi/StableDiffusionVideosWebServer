@@ -213,7 +213,6 @@ function findFreeMachine() {
         timeout: 1000,
       }).catch((error) => {
         console.log("machine offline");
-        machine.status = "offline";
       })
       return machine;
     }
