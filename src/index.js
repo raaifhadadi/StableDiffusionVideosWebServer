@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
@@ -162,6 +163,7 @@ async function runJob(job, machine) {
   const params = job.body;
 
   console.log("job started");
+  console.log(url);
 
   await axios({
     url: url,
@@ -273,8 +275,8 @@ app.get("/generate", async (req, res) => {
   const query = req.query;
 
   axios({
-    // url: serverURL + '/api',
-    url: "https://stablediffusionvideoswebserver-production.up.railway.app/api3",
+    url: serverURL + '/api',
+    // url: "https://stablediffusionvideoswebserver-production.up.railway.app/api3",
     responseType: "stream",
     params: query,
     timeout: 100000000,
@@ -342,10 +344,13 @@ app.get("/getCreatedVideo", (req, res) => {
   console.log("getCreatedVideo");
   console.log("query is " + req.query.user);
   const query = req.query;
+  // get machine ip
+  const job = jobs.get(Number(query.jobID));
+  const machine = gpuMachines.find((m) => m.id == job.machine);
+  console.log("machine is " + machine.ip);
 
   axios({
-    // url: "http://109.158.65.154:8080/getVideo",
-    url: "https://stablediffusionvideoswebserver-production.up.railway.app/api3",
+    url: "http://" + machine.ip + "/getVideo",
     responseType: "stream",
     params: query,
     timeout: 100000000,
@@ -355,18 +360,21 @@ app.get("/getCreatedVideo", (req, res) => {
       res.header("Access-Control-Allow-Origin", "*");
       res.contentType("video/mp4");
       console.log("response is");
-      console.log(response);
       response.data.pipe(res);
 
       // desperation
       console.log("pls work");
 
-      // writing file to google cloud
-      response.data.pipe(
-        bucket
-          .file(req.query.user + "/" + req.query.fileName + ".mp4")
-          .createWriteStream({ resumable: false, gzip: true })
-      );
+      try {
+        // writing file to google cloud
+        response.data.pipe(
+          bucket
+            .file(req.query.user + "/" + req.query.fileName + ".mp4")
+            .createWriteStream({ resumable: false, gzip: true })
+        );
+      } catch (error) {
+        console.log("error writing to google cloud");
+      }
     })
     .catch((error) => {
       console.log("errorrrrrr");
