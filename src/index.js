@@ -385,18 +385,18 @@ app.get("/getCreatedVideo", (req, res) => {
       res.contentType("video/mp4");
       response.data.pipe(res);
 
-      try {
-        // writing file to google cloud
-        console.log(" - writing video to google cloud");
-        response.data.pipe(
-          bucket
-            .file(req.query.user + "/" + req.query.fileName + ".mp4")
-            .createWriteStream({ resumable: false, gzip: true })
-        );
-        console.log(" - video written to google cloud");
-      } catch (error) {
-        console.log("error writing to google cloud");
-      }
+      // try {
+      //   // writing file to google cloud
+      //   console.log(" - writing video to google cloud");
+      //   response.data.pipe(
+      //     bucket
+      //       .file(req.query.user + "/" + req.query.fileName + ".mp4")
+      //       .createWriteStream({ resumable: false, gzip: true })
+      //   );
+      //   console.log(" - video written to google cloud");
+      // } catch (error) {
+      //   console.log("error writing to google cloud");
+      // }
     })
     .catch((error) => {
       console.log("eroor getting video from flask server");
