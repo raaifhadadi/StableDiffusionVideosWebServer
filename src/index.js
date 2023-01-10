@@ -179,7 +179,7 @@ async function runJob(job, machine) {
   const url = "http://" + machine.ip + "/api";
   const params = job.body;
 
-  console.log("job started");
+  console.log("job started - " + job.params.prompts + " on machine " + machine.ip);
   console.log(url);
 
   await axios({
