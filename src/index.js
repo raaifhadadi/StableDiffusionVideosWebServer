@@ -179,35 +179,34 @@ async function runJob(job, machine) {
   const url = "http://" + machine.ip + "/api";
   const params = job.body;
 
-  console.log("job started - " + job.params.prompts + " on machine " + machine.ip);
+  console.log("job started - \n   prompts : " + params.prompts + "\n   machine : " + machine.ip);
   console.log(url);
 
   await axios({
     url: url,
     params: params,
     timeout: 100000000,
-    // TODO: response type: BLOB
+    responseType: 'stream'
   }).then((response) => {
     try {
-      // writing file to google cloud
-      console.log(" - writing video to google cloud");
-      console.log(params.user + "/" + params.fileName + ".mp4")
-      response.data.pipe(
-        bucket
-          .file(params.user + "/" + params.fileName + ".mp4")
-          .createWriteStream({ resumable: false, gzip: true })
-      );
-      console.log(" - video written to google cloud");
+    //// writing file to google cloud
+    //console.log(" - writing video to google cloud");
+    console.log(params.user + "/" + params.fileName + ".mp4")
+    response.data.pipe(
+      bucket
+        .file(params.user + "/" + params.fileName + ".mp4")
+        .createWriteStream({ resumable: false, gzip: true })
+    );
+    console.log(" - video written to google cloud");
     } catch (error) {
       console.log("error writing to google cloud");
+      console.log(error)
     }
   })
     .catch((error) => {
-      // console.log(error)
+      //console.log(error)
       console.log("job failed");
     });
-
-  //TODO: store video in firebase
 
   completeJob(job, machine);
 }
