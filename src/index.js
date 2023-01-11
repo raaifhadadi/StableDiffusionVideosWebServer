@@ -141,14 +141,14 @@ function queueRequest(query) {
   return jobID;
 }
 
-function processQueue() {
+async function processQueue() {
   while (true) {
 
     if (requests.length == 0) {
       return;
     }
 
-    const machine = findFreeMachine();
+    const machine = await findFreeMachine();
 
     if (machine === null) {
       return;
@@ -223,18 +223,24 @@ function completeJob(job, machine) {
 
 // Get the first free machine
 // Returns null if no machine is free
-function findFreeMachine() {
+async function findFreeMachine() {
   for (const machine of gpuMachines) {
+    var online = false
     if (machine.status == "available") {
       // Check machine is online
-      axios({
+      await axios({
         url: "http://" + machine.ip + "/",
         timeout: 1000,
-      }).catch((error) => {
-        console.log("machine offline");
+      }).then((_) => {
+        console.log("machine online :)");
+        online = true
       })
-      console.log("machine online");
-      return machine;
+        .catch((_) => {
+          console.log("machine offline :(");
+        })
+      if(online) {
+        return machine;
+      }
     }
   }
   return null;
