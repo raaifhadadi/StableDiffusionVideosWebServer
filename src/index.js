@@ -191,9 +191,10 @@ async function runJob(job, machine) {
     try {
       // writing file to google cloud
       console.log(" - writing video to google cloud");
+      console.log(params.user + "/" + params.fileName + ".mp4")
       response.data.pipe(
         bucket
-          .file(req.query.user + "/" + req.query.fileName + ".mp4")
+          .file(params.user + "/" + params.fileName + ".mp4")
           .createWriteStream({ resumable: false, gzip: true })
       );
       console.log(" - video written to google cloud");
