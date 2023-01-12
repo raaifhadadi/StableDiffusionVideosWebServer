@@ -430,14 +430,13 @@ app.get("/getGalleryVideos", async (req, res) => {
     uploadDates.push(metaData[0].timeCreated);
   }
 
-  uploadDates.sort(function(a, b) {
-    return new Date(a) - new Date(b);
+  sortedUploadDates = [...uploadDates].sort(function(a, b) {
+    return new Date(b) - new Date(a);
 });
 
 for (let i = 0; i < uploadDates.length; i++) {
   for (let j = 0; j < fileNames.length; j++) {
-    const metaData = await bucket.file(fileNames[j]).getMetadata();
-    if (metaData[0].timeCreated == uploadDates[i]) {
+    if (uploadDates[j] == sortedUploadDates[i]) {
       sortedFileNames.push(fileNames[j]);
     }
   }
