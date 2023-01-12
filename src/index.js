@@ -189,15 +189,15 @@ async function runJob(job, machine) {
     responseType: 'stream'
   }).then((response) => {
     try {
-    //// writing file to google cloud
-    //console.log(" - writing video to google cloud");
-    console.log(params.user + "/" + params.fileName + ".mp4")
-    response.data.pipe(
-      bucket
-        .file(params.user + "/" + params.fileName + ".mp4")
-        .createWriteStream({ resumable: false, gzip: true })
-    );
-    console.log(" - video written to google cloud");
+      //// writing file to google cloud
+      //console.log(" - writing video to google cloud");
+      console.log(params.user + "/" + params.fileName + ".mp4")
+      response.data.pipe(
+        bucket
+          .file(params.user + "/" + params.fileName + ".mp4")
+          .createWriteStream({ resumable: false, gzip: true })
+      );
+      console.log(" - video written to google cloud");
     } catch (error) {
       console.log("error writing to google cloud");
       console.log(error)
@@ -238,7 +238,7 @@ async function findFreeMachine() {
         .catch((_) => {
           console.log("machine offline :(");
         })
-      if(online) {
+      if (online) {
         return machine;
       }
     }
@@ -285,7 +285,15 @@ app.get("/status", async (req, res) => {
           res.contentType("text/plain");
           res.send({ status: "error" });
         });
-    } else {
+    } else if (job.status == "pending") {
+      // get position in queue
+      const position = requests.findIndex((j) => j == jobID);
+      res.header("Access-Control-Allow-Origin", "*");
+      res.contentType("text/plain");
+      res.send({ status: job.status, position: position });
+    }
+
+    else {
       res.header("Access-Control-Allow-Origin", "*");
       res.contentType("text/plain");
       res.send({ status: job.status });
