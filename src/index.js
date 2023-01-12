@@ -414,32 +414,32 @@ app.get("/getCreatedVideo", (req, res) => {
 app.get("/getGalleryVideos", async (req, res) => {
   const [files] = await bucket.getFiles({ prefix: req.query.user });
   const fileNames = files.map((file) => file.name);
+  const sortedFileNames = [];
+  const uploadDates = [];
+
+  for (let i = 0; i < fileNames.length; i++) {
+    const metaData = await bucket.file(fileNames[i]).getMetadata();
+    uploadDates.push(metaData[0].timeCreated);
+  }
+
+  uploadDates.sort(function(a, b) {
+    return new Date(a) - new Date(b);
+});
+
+for (let i = 0; i < uploadDates.length; i++) {
+  for (let j = 0; j < fileNames.length; j++) {
+    const metaData = await bucket.file(fileNames[j]).getMetadata();
+    if (metaData[0].timeCreated == uploadDates[i]) {
+      sortedFileNames.push(fileNames[j]);
+    }
+  }
+}
 
   const sumFiles = [];
-  for (let i = 0; i < fileNames.length; i++) {
-    // console.log("aaaaa");
-    sumFiles.push(bucket.file(fileNames[i]).publicUrl());
+  for (let i = 0; i < sortedFileNames.length; i++) {    
+    sumFiles.push(bucket.file(sortedFileNames[i]).publicUrl());
   }
   res.json({ files: sumFiles });
 });
 
-// app.get("/getGalleryVideos", async (req, res) => {
-//   const [files] = await bucket.getFiles(bucketName, { prefix: req.query.user });
-//   const fileNames = files.map((file) => file.name);
 
-//   const sumFiles = [];
-//   for (let i = 0; i < fileNames.length; i++) {
-//     const dw = await bucket.file(fileNames[0]);
-//     console.log("aaaaa");
-//     bucket.file(fileNames[0]).makePublic();
-//     console.log(dw.publicUrl());
-//     console.log("bbbbb");
-//     await bucket
-//       .file(fileNames[i])
-//       .download()
-//       .then((data) => {
-//         sumFiles.push(data);
-//       });
-//   }
-//   res.json(sumFiles);
-// });
