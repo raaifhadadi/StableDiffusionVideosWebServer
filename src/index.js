@@ -379,20 +379,6 @@ app.get("/logrequests", (req, res) => {
   res.send("logged");
 });
 
-//axios({
-//    url: url,
-//    params: params,
-//    responseType: 'stream',
-//    timeout: 100000000
-//}).then(response => {
-//    res.header("Access-Control-Allow-Origin", "*");
-//    res.contentType('video/mp4');
-//    response.data.pipe(res)
-//}).catch((error) => {
-//    res.status(500).send(error)
-//})
-
-/// TEMPORARY
 app.get("/getCreatedVideo", (req, res) => {
   console.log("getCreatedVideo:");
   const query = req.query;
