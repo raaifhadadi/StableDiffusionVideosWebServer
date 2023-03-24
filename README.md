@@ -1,2 +1,3 @@
 # StableDiffusionVideosWebServer
-An express web server for StableDiffusionVideos
+An express web server for StableDiffusionVideos project:
+https://github.com/AmeenIzhac/StableDiffusionVideos
